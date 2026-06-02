@@ -53,7 +53,7 @@ def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
     
     translator = get_translator(translator_type)
     
-    lrc_files = [f for f in os.listdir(directory) if f.lower().endswith('.lrc')]
+    lrc_files = list(Path(directory).rglob('*.lrc'))
     
     if not lrc_files:
         print(f"目录中没有找到LRC文件: {directory}")
@@ -64,8 +64,7 @@ def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
     success_count = 0
     skipped_count = 0
     for lrc_file in lrc_files:
-        file_path = os.path.join(directory, lrc_file)
-        result = translate_lrc_file(file_path, translator)
+        result = translate_lrc_file(str(lrc_file), translator)
         if result == TranslateResult.Success:
             success_count += 1
         elif result == TranslateResult.Skipped:
