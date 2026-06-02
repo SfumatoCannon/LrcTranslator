@@ -1,10 +1,17 @@
 import os
+import sys
 import json
 import requests
+from pathlib import Path
 from typing import List, Optional
 from dotenv import load_dotenv
 
-load_dotenv()
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent
+
+load_dotenv(get_base_path() / ".env")
 
 class Translator:
     def __init__(self):
@@ -86,6 +93,7 @@ class ChatGPTTranslator(Translator):
         super().__init__()
         self.api_key = os.getenv('CHATGPT_API_KEY')
         self.api_base = os.getenv('CHATGPT_API_BASE', 'https://api.chatgpt.com/v1')
+        self.model = os.getenv('CHATGPT_MODEL', 'gpt-3.5-turbo')
 
     def translate_lyrics(self, lyrics: List[str]) -> List[str]:
         if not self.api_key:
@@ -215,7 +223,12 @@ class DeepSeekTranslator(Translator):
             print(f"翻译请求异常: {e}")
             return [''] * line_count
 
-def get_translator(translator_type: str = 'openai') -> Translator:
+def get_default_translator_type() -> str:
+    return os.getenv('DEFAULT_TRANSLATOR', 'openai')
+
+def get_translator(translator_type: str = None) -> Translator:
+    if translator_type is None:
+        translator_type = get_default_translator_type()
     translator_type = translator_type.lower()
     if translator_type == 'chatgpt':
         return ChatGPTTranslator()

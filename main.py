@@ -3,7 +3,7 @@ import sys
 from enum import Enum
 from pathlib import Path
 from lrc_parser import LrcParser
-from translator import get_translator
+from translator import get_translator, get_default_translator_type
 
 class TranslateResult(Enum):
     Success = 1
@@ -46,7 +46,7 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
         print("更新翻译失败")
         return TranslateResult.Error
 
-def translate_lrc_directory(directory: str, translator_type: str = 'openai') -> int:
+def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
     if not os.path.isdir(directory):
         print(f"错误：目录不存在或不是目录: {directory}")
         return 0
@@ -75,38 +75,50 @@ def translate_lrc_directory(directory: str, translator_type: str = 'openai') -> 
     
     return success_count
 
+def pause_and_exit(code: int = 0):
+    print("\n按任意键退出...")
+    try:
+        import msvcrt
+        msvcrt.getch()
+    except:
+        input()
+    sys.exit(code)
+
 def main():
+    default_translator = get_default_translator_type()
+    
     if len(sys.argv) < 2:
         print("用法:")
-        print("  python main.py <lrc文件或目录路径> [翻译器类型]")
+        print("  将LRC文件或目录拖放到此程序上")
+        print("  或通过命令行运行: LrcTranslator.exe <lrc文件或目录路径> [翻译器类型]")
         print("")
         print("翻译器类型:")
-        print("  openai - 使用OpenAI API (默认)")
+        print("  openai - 使用OpenAI API")
         print("  chatgpt - 使用ChatGPT API")
         print("  deepseek - 使用DeepSeek API")
+        print(f"  当前默认翻译器: {default_translator}")
         print("")
-        print("示例:")
-        print("  python main.py ./lyrics")
-        print("  python main.py ./song.lrc")
-        print("  python main.py ./lyrics deepseek")
-        sys.exit(1)
+        print("注意: 请确保.env文件与程序在同一目录下，并配置好API密钥")
+        pause_and_exit(1)
     
     path = sys.argv[1]
-    translator_type = sys.argv[2] if len(sys.argv) > 2 else 'openai'
+    translator_type = sys.argv[2] if len(sys.argv) > 2 else None
     
     if not os.path.exists(path):
         print(f"错误：路径不存在: {path}")
-        sys.exit(1)
+        pause_and_exit(1)
     
     if os.path.isfile(path):
         if not path.lower().endswith('.lrc'):
             print("错误：文件必须是LRC格式")
-            sys.exit(1)
+            pause_and_exit(1)
         
         translator = get_translator(translator_type)
         translate_lrc_file(path, translator)
     else:
         translate_lrc_directory(path, translator_type)
+    
+    pause_and_exit(0)
 
 if __name__ == '__main__':
     main()

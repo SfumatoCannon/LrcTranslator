@@ -2,6 +2,9 @@
 
 LRC歌词翻译工具，支持使用多种AI翻译服务自动翻译歌词文件。只需配置对应AI平台的 api-key 即可。
 
+![](./README_img/1.png)
+![](./README_img/2.png)
+
 ## 功能特性
 
 - 支持多种AI翻译服务：OpenAI、ChatGPT、DeepSeek
