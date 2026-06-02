@@ -41,9 +41,8 @@ class OpenAITranslator(Translator):
 1. 每行歌词翻译成一行，保持原有行数（共{line_count}行）
 2. 只返回翻译结果，每行用换行符分隔
 3. 不要添加任何解释、编号或额外内容
-4. 如果某行是空行，翻译结果也保持空行
-5. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
-6. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符
+4. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
+5. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符，也不能添加额外的空行，一个不多一个不少
 
 歌词：
 {lyrics_text}"""
@@ -110,9 +109,8 @@ Requirements:
 1. Translate each line to one line, keep the same number of lines ({line_count} lines total)
 2. Only return the translation, separated by newlines
 3. Do not add any explanation, numbering or extra content
-4. If a line is empty, keep it empty in translation
-5. If a line is just the song title or other metadata, do not ignore it, translate it as well
-6. The translated text must have the same format as the original lyrics, with no extra newlines
+4. If a line is just the song title or other metadata, do not ignore it, translate it as well
+5. The translated text must have the same format as the original lyrics, with no extra newlines, and one line for each original line
 
 Lyrics:
 {lyrics_text}"""
@@ -178,9 +176,8 @@ class DeepSeekTranslator(Translator):
 1. 每行歌词翻译成一行，保持原有行数（共{line_count}行）
 2. 只返回翻译结果，每行用换行符分隔
 3. 不要添加任何解释、编号或额外内容
-4. 如果某行是空行，翻译结果也保持空行
-5. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
-6. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符
+4. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
+5. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符，也不能添加额外的空行，一个不多一个不少
 
 歌词：
 {lyrics_text}"""
