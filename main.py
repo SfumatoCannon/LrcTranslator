@@ -9,8 +9,18 @@ class TranslateResult(Enum):
     Success = 1
     Error = 2
     Skipped = 3
+    Reset = 4
+
+class GlobalChoice(Enum):
+    Ask = 0
+    YesAll = 1
+    NoAll = 2
+
+global_choice = GlobalChoice.Ask
 
 def translate_lrc_file(file_path: str, translator) -> TranslateResult:
+    global global_choice
+    
     parser = LrcParser()
     if not parser.parse_file(file_path):
         print(f"无法解析文件: {file_path}")
@@ -22,8 +32,40 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
         return TranslateResult.Error
     
     if parser.is_already_translated():
-        print(f"跳过已翻译的歌曲: {file_path}")
-        return TranslateResult.Skipped
+        print(f"检测到歌曲已翻译: {file_path}")
+        
+        if global_choice == GlobalChoice.YesAll:
+            user_input = 'y'
+        elif global_choice == GlobalChoice.NoAll:
+            user_input = 'n'
+        else:
+            user_input = input("是否恢复成原翻译文本? (y:是 Y:全是, n:否 N:全否): ").strip()
+            
+            if user_input not in ['y', 'Y', 'n', 'N']:
+                print("输入无效，跳过该歌曲")
+                return TranslateResult.Skipped
+        
+        if user_input in ['y', 'Y']:
+            if global_choice == GlobalChoice.Ask and user_input == 'Y':
+                global_choice = GlobalChoice.YesAll
+            
+            path = Path(file_path)
+            original_dir = path.parent / "original"
+            original_dir.mkdir(parents=True, exist_ok=True)
+            output_path = str(original_dir / path.name)
+            
+            if parser.save_restored_original(output_path):
+                print(f"已恢复原文并保存到: {output_path}")
+                return TranslateResult.Reset
+            else:
+                print(f"保存恢复文件失败: {output_path}")
+                return TranslateResult.Error
+        else:
+            if global_choice == GlobalChoice.Ask and user_input == 'N':
+                global_choice = GlobalChoice.NoAll
+            
+            print(f"跳过该歌曲: {file_path}")
+            return TranslateResult.Skipped
     
     print(f"开始翻译: {file_path}")
     
@@ -63,14 +105,17 @@ def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
     
     success_count = 0
     skipped_count = 0
+    reset_count = 0
     for lrc_file in lrc_files:
         result = translate_lrc_file(str(lrc_file), translator)
         if result == TranslateResult.Success:
             success_count += 1
         elif result == TranslateResult.Skipped:
             skipped_count += 1
+        elif result == TranslateResult.Reset:
+            reset_count += 1
     
-    print(f"\n翻译完成！成功: {success_count}/{len(lrc_files)}, 跳过: {skipped_count}")
+    print(f"\n翻译完成！成功: {success_count}/{len(lrc_files)}, 跳过: {skipped_count}, 已还原: {reset_count}")
     
     return success_count
 

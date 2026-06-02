@@ -48,14 +48,41 @@ class LrcLine:
     def to_lrc_line(self) -> str:
         return f"{self.format_time()}{self.text}"
 
+class LrcGroup:
+    def __init__(self, times: List[float], text: str, translation: str = ''):
+        self.times = times
+        self.text = text
+        self.translation = translation
+    
+    def __repr__(self):
+        return f"LrcGroup(times={self.times}, text='{self.text}', translation='{self.translation}')"
+    
+    @staticmethod
+    def format_single_time(time: float) -> str:
+        minutes = int(time // 60)
+        seconds = time % 60
+        milliseconds = int((seconds % 1) * 100)
+        seconds = int(seconds)
+        return f"[{minutes:02d}:{seconds:02d}.{milliseconds:02d}]"
+    
+    def format_time_tags(self) -> str:
+        return ''.join(self.format_single_time(t) for t in self.times)
+    
+    def to_lrc_lines(self, with_translation: bool = False) -> List[str]:
+        lines = []
+        time_tags_str = self.format_time_tags()
+        lines.append(f"{time_tags_str}{self.text}")
+        if with_translation and self.translation:
+            lines.append(f"{time_tags_str}{self.translation}")
+        return lines
+
 class LrcParser:
     TIME_TAG_PATTERN = re.compile(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]')
     META_TAG_PATTERN = re.compile(r'\[([a-zA-Z]+):(.+)\]')
     
     def __init__(self):
-        self.lines: List[LrcLine] = []
+        self.groups: List[LrcGroup] = []
         self.metadata: dict = {}
-        self.translated_lines: List[str] = []
     
     def parse_file(self, file_path: str) -> bool:
         try:
@@ -68,10 +95,12 @@ class LrcParser:
             return False
     
     def parse_content(self, content: str) -> bool:
-        self.lines = []
+        self.groups = []
         self.metadata = {}
         
         lines = content.split('\n')
+        temp_lines: List[LrcLine] = []
+        
         for line in lines:
             line = line.strip()
             if not line:
@@ -99,13 +128,50 @@ class LrcParser:
                 if len(tag[2]) == 2:
                     milliseconds *= 10
                 total_time = minutes * 60 + seconds + milliseconds / 1000
-                self.lines.append(LrcLine(total_time, text))
+                temp_lines.append(LrcLine(total_time, text))
         
-        self.lines.sort(key=lambda x: x.time)
+        temp_lines.sort(key=lambda x: x.time)
+        
+        self.groups = []
+        i = 0
+        while i < len(temp_lines):
+            current_line = temp_lines[i]
+            times = [current_line.time]
+            text = current_line.text
+            translation = ''
+            
+            if i + 1 < len(temp_lines) and abs(current_line.time - temp_lines[i + 1].time) < 0.001:
+                translation = temp_lines[i + 1].text
+                i += 2
+            else:
+                i += 1
+            
+            self.groups.append(LrcGroup(times, text, translation))
+        
+        self._merge_duplicate_groups()
         return True
     
+    def _merge_duplicate_groups(self):
+        if not self.groups:
+            return
+        
+        merged: List[LrcGroup] = []
+        current_group = self.groups[0]
+        
+        for group in self.groups[1:]:
+            if group.text == current_group.text and group.translation == current_group.translation:
+                current_group.times.extend(group.times)
+            else:
+                current_group.times.sort()
+                merged.append(current_group)
+                current_group = group
+        
+        current_group.times.sort()
+        merged.append(current_group)
+        self.groups = merged
+    
     def get_lyrics_text(self) -> str:
-        return '\n'.join(line.text for line in self.lines)
+        return '\n'.join(group.text for group in self.groups)
     
     def save_lrc(self, file_path: str, with_translation: bool = False) -> bool:
         try:
@@ -113,53 +179,55 @@ class LrcParser:
                 for key, value in self.metadata.items():
                     f.write(f"[{key.upper()}:{value}]\n")
                 
-                if with_translation and self.translated_lines:
-                    for i, line in enumerate(self.lines):
-                        f.write(line.to_lrc_line() + '\n')
-                        if i < len(self.translated_lines) and self.translated_lines[i]:
-                            f.write(f"{line.format_time()}{self.translated_lines[i]}\n")
-                else:
-                    for line in self.lines:
-                        f.write(line.to_lrc_line() + '\n')
+                for group in self.groups:
+                    for line in group.to_lrc_lines(with_translation):
+                        f.write(line + '\n')
             return True
         except Exception as e:
             print(f"保存文件失败: {e}")
             return False
     
+    def save_restored_original(self, file_path: str) -> bool:
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                for key, value in self.metadata.items():
+                    f.write(f"[{key.upper()}:{value}]\n")
+                
+                for group in self.groups:
+                    f.write(f"{group.format_time_tags()}{group.text}\n")
+            return True
+        except Exception as e:
+            print(f"保存恢复文件失败: {e}")
+            return False
+    
     def update_translation(self, translations: List[str]) -> bool:
-        if len(translations) != len(self.lines):
-            print(f"翻译数量不匹配: 期望 {len(self.lines)} 条，实际 {len(translations)} 条")
+        if len(translations) != len(self.groups):
+            print(f"翻译数量不匹配: 期望 {len(self.groups)} 条，实际 {len(translations)} 条")
             return False
         
-        self.translated_lines = translations
+        for i, trans in enumerate(translations):
+            self.groups[i].translation = trans
         return True
     
     def get_lyrics_lines(self) -> List[str]:
-        return [line.text for line in self.lines]
+        return [group.text for group in self.groups]
     
     def is_already_translated(self, threshold: int = 5) -> bool:
-        """
-        检测歌曲是否已被翻译
-        判断依据：连续两行出现相同的时间标签则计数器+1，计数器达到threshold则判定被翻译
-        
-        Args:
-            threshold: 判定阈值，默认5次连续相同时间标签
-        
-        Returns:
-            bool: True表示已被翻译，False表示未被翻译
-        """
-        if len(self.lines) < 2:
+        if len(self.groups) < 1:
             return False
         
-        same_time_count = 0
-        
-        for i in range(len(self.lines) - 1):
-            current_time = self.lines[i].time
-            next_time = self.lines[i + 1].time
-            
-            if abs(current_time - next_time) < 0.001:
-                same_time_count += 1
-                if same_time_count >= threshold:
+        translated_count = 0
+        for group in self.groups:
+            if group.translation:
+                translated_count += 1
+                if translated_count >= threshold:
                     return True
         
         return False
+    
+    def restore_original(self) -> List[LrcLine]:
+        original_lines = []
+        for group in self.groups:
+            for time in group.times:
+                original_lines.append(LrcLine(time, group.text))
+        return original_lines
