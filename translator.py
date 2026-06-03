@@ -43,6 +43,7 @@ class OpenAITranslator(Translator):
 3. 不要添加任何解释、编号或额外内容
 4. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
 5. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符，也不能添加额外的空行，一个不多一个不少
+6. 若某行难以翻译，不要跳过它或输出空行，直接返回该行的原文即可
 
 歌词：
 {lyrics_text}"""
@@ -111,6 +112,8 @@ Requirements:
 3. Do not add any explanation, numbering or extra content
 4. If a line is just the song title or other metadata, do not ignore it, translate it as well
 5. The translated text must have the same format as the original lyrics, with no extra newlines, and one line for each original line
+6. If a line is difficult to translate, do not skip it or output an empty line, just return the original line
+
 
 Lyrics:
 {lyrics_text}"""
@@ -178,6 +181,7 @@ class DeepSeekTranslator(Translator):
 3. 不要添加任何解释、编号或额外内容
 4. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
 5. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符，也不能添加额外的空行，一个不多一个不少
+6. 若某行难以翻译，不要跳过它或输出空行，直接返回该行的原文即可
 
 歌词：
 {lyrics_text}"""
