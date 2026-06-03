@@ -32,8 +32,10 @@ class OpenAITranslator(Translator):
             print("错误：未配置OPENAI_API_KEY")
             return [''] * len(lyrics)
 
-        lyrics_text = '\n'.join(lyrics)
+        # 移除空行，统计实际非空行数量
+        lyrics = [line for line in lyrics if line.strip()]
         line_count = len(lyrics)
+        lyrics_text = '\n'.join(lyrics)
 
         prompt = f"""请将以下歌词翻译成{self.target_language}。
 
@@ -74,11 +76,15 @@ class OpenAITranslator(Translator):
                 result = response.json()
                 translated_text = result['choices'][0]['message']['content'].strip()
                 translated_lines = translated_text.split('\n')
-                
-                while len(translated_lines) < line_count:
-                    translated_lines.append('')
-                translated_lines = translated_lines[:line_count]
-                
+
+                # 删除所有空行
+                translated_lines = [line for line in translated_lines if line.strip()]
+
+                # 检测非空行数量是否与输入一致
+                if len(translated_lines) != line_count:
+                    print(f"翻译失败：输入 {line_count} 行非空歌词，但收到 {len(translated_lines)} 行非空翻译")
+                    return [''] * line_count
+
                 print(f"翻译完成")
                 return translated_lines
             else:
@@ -101,8 +107,10 @@ class ChatGPTTranslator(Translator):
             print("错误：未配置CHATGPT_API_KEY")
             return [''] * len(lyrics)
 
-        lyrics_text = '\n'.join(lyrics)
+        # 移除空行，统计实际非空行数量
+        lyrics = [line for line in lyrics if line.strip()]
         line_count = len(lyrics)
+        lyrics_text = '\n'.join(lyrics)
 
         prompt = f"""Translate the following lyrics to {self.target_language}.
 
@@ -144,11 +152,15 @@ Lyrics:
                 result = response.json()
                 translated_text = result['choices'][0]['message']['content'].strip()
                 translated_lines = translated_text.split('\n')
-                
-                while len(translated_lines) < line_count:
-                    translated_lines.append('')
-                translated_lines = translated_lines[:line_count]
-                
+
+                # 删除所有空行
+                translated_lines = [line for line in translated_lines if line.strip()]
+
+                # 检测非空行数量是否与输入一致
+                if len(translated_lines) != line_count:
+                    print(f"翻译失败：输入 {line_count} 行非空歌词，但收到 {len(translated_lines)} 行非空翻译")
+                    return [''] * line_count
+
                 print(f"翻译完成")
                 return translated_lines
             else:
@@ -170,8 +182,10 @@ class DeepSeekTranslator(Translator):
             print("错误：未配置DEEPSEEK_API_KEY")
             return [''] * len(lyrics)
 
-        lyrics_text = '\n'.join(lyrics)
+        # 移除空行，统计实际非空行数量
+        lyrics = [line for line in lyrics if line.strip()]
         line_count = len(lyrics)
+        lyrics_text = '\n'.join(lyrics)
 
         prompt = f"""请将以下歌词翻译成{self.target_language}。
 
@@ -212,11 +226,15 @@ class DeepSeekTranslator(Translator):
                 result = response.json()
                 translated_text = result['choices'][0]['message']['content'].strip()
                 translated_lines = translated_text.split('\n')
-                
-                while len(translated_lines) < line_count:
-                    translated_lines.append('')
-                translated_lines = translated_lines[:line_count]
-                
+
+                # 删除所有空行
+                translated_lines = [line for line in translated_lines if line.strip()]
+
+                # 检测非空行数量是否与输入一致
+                if len(translated_lines) != line_count:
+                    print(f"翻译失败：输入 {line_count} 行非空歌词，但收到 {len(translated_lines)} 行非空翻译")
+                    return [''] * line_count
+
                 print(f"翻译完成")
                 return translated_lines
             else:

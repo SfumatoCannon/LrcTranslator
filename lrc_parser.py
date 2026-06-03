@@ -83,6 +83,8 @@ class LrcParser:
     def __init__(self):
         self.groups: List[LrcGroup] = []
         self.metadata: dict = {}
+        self._raw_lines: List[Tuple[List[float], str]] = []
+        self._empty_line_times: List[Tuple[int, List[float]]] = []  # (group_index, times)
     
     def parse_file(self, file_path: str) -> bool:
         try:
@@ -97,10 +99,12 @@ class LrcParser:
     def parse_content(self, content: str) -> bool:
         self.groups = []
         self.metadata = {}
+        self._raw_lines = []
+        self._empty_line_times = []
         
         lines = content.split('\n')
-        temp_lines: List[LrcLine] = []
         
+        group_index = 0
         for line in lines:
             line = line.strip()
             if not line:
@@ -119,8 +123,20 @@ class LrcParser:
             
             text = self.TIME_TAG_PATTERN.sub('', line).strip()
             if not text:
+                # 记录空行的时间戳
+                times = []
+                for tag in time_tags:
+                    minutes = int(tag[0])
+                    seconds = int(tag[1])
+                    milliseconds = int(tag[2])
+                    if len(tag[2]) == 2:
+                        milliseconds *= 10
+                    total_time = minutes * 60 + seconds + milliseconds / 1000
+                    times.append(total_time)
+                self._empty_line_times.append((group_index, times))
                 continue
             
+            times = []
             for tag in time_tags:
                 minutes = int(tag[0])
                 seconds = int(tag[1])
@@ -128,11 +144,78 @@ class LrcParser:
                 if len(tag[2]) == 2:
                     milliseconds *= 10
                 total_time = minutes * 60 + seconds + milliseconds / 1000
-                temp_lines.append(LrcLine(total_time, text))
+                times.append(total_time)
+            
+            self._raw_lines.append((times, text))
+            group_index += 1
+        
+        self.groups = [LrcGroup(times, text, '') for times, text in self._raw_lines]
+        return True
+    
+    def get_lyrics_text(self) -> str:
+        return '\n'.join(group.text for group in self.groups)
+    
+    def save_lrc(self, file_path: str, with_translation: bool = False) -> bool:
+        try:
+            # 构建空行索引集合，key 为 group_index，value 为 times 列表
+            empty_lines_map = {}
+            for idx, times in self._empty_line_times:
+                if idx not in empty_lines_map:
+                    empty_lines_map[idx] = []
+                empty_lines_map[idx].extend(times)
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                for key, value in self.metadata.items():
+                    f.write(f"[{key.upper()}:{value}]\n")
+                
+                for i, group in enumerate(self.groups):
+                    # 在当前位置之前插入空行
+                    if i in empty_lines_map:
+                        for time in empty_lines_map[i]:
+                            f.write(LrcGroup.format_single_time(time) + '\n')
+                    
+                    for line in group.to_lrc_lines(with_translation):
+                        f.write(line + '\n')
+            return True
+        except Exception as e:
+            print(f"保存文件失败: {e}")
+            return False
+    
+    def save_restored_original(self, file_path: str) -> bool:
+        try:
+            # 构建空行索引集合
+            empty_lines_map = {}
+            for idx, times in self._empty_line_times:
+                if idx not in empty_lines_map:
+                    empty_lines_map[idx] = []
+                empty_lines_map[idx].extend(times)
+            
+            restored_groups = self._get_restored_groups()
+            with open(file_path, 'w', encoding='utf-8') as f:
+                for key, value in self.metadata.items():
+                    f.write(f"[{key.upper()}:{value}]\n")
+                
+                for i, group in enumerate(restored_groups):
+                    # 在当前位置之前插入空行
+                    if i in empty_lines_map:
+                        for time in empty_lines_map[i]:
+                            f.write(LrcGroup.format_single_time(time) + '\n')
+                    
+                    f.write(f"{group.format_time_tags()}{group.text}\n")
+            return True
+        except Exception as e:
+            print(f"保存恢复文件失败: {e}")
+            return False
+    
+    def _get_restored_groups(self) -> List[LrcGroup]:
+        temp_lines = []
+        for times, text in self._raw_lines:
+            for time in times:
+                temp_lines.append(LrcLine(time, text))
         
         temp_lines.sort(key=lambda x: x.time)
         
-        self.groups = []
+        paired_groups = []
         i = 0
         while i < len(temp_lines):
             current_line = temp_lines[i]
@@ -146,59 +229,22 @@ class LrcParser:
             else:
                 i += 1
             
-            self.groups.append(LrcGroup(times, text, translation))
+            paired_groups.append(LrcGroup(times, text, translation))
         
-        self._merge_duplicate_groups()
-        return True
-    
-    def _merge_duplicate_groups(self):
-        if not self.groups:
-            return
+        merged = []
+        if paired_groups:
+            current_group = paired_groups[0]
+            for group in paired_groups[1:]:
+                if group.text == current_group.text and group.translation == current_group.translation:
+                    current_group.times.extend(group.times)
+                else:
+                    current_group.times.sort()
+                    merged.append(current_group)
+                    current_group = group
+            current_group.times.sort()
+            merged.append(current_group)
         
-        merged: List[LrcGroup] = []
-        current_group = self.groups[0]
-        
-        for group in self.groups[1:]:
-            if group.text == current_group.text and group.translation == current_group.translation:
-                current_group.times.extend(group.times)
-            else:
-                current_group.times.sort()
-                merged.append(current_group)
-                current_group = group
-        
-        current_group.times.sort()
-        merged.append(current_group)
-        self.groups = merged
-    
-    def get_lyrics_text(self) -> str:
-        return '\n'.join(group.text for group in self.groups)
-    
-    def save_lrc(self, file_path: str, with_translation: bool = False) -> bool:
-        try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                for key, value in self.metadata.items():
-                    f.write(f"[{key.upper()}:{value}]\n")
-                
-                for group in self.groups:
-                    for line in group.to_lrc_lines(with_translation):
-                        f.write(line + '\n')
-            return True
-        except Exception as e:
-            print(f"保存文件失败: {e}")
-            return False
-    
-    def save_restored_original(self, file_path: str) -> bool:
-        try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                for key, value in self.metadata.items():
-                    f.write(f"[{key.upper()}:{value}]\n")
-                
-                for group in self.groups:
-                    f.write(f"{group.format_time_tags()}{group.text}\n")
-            return True
-        except Exception as e:
-            print(f"保存恢复文件失败: {e}")
-            return False
+        return merged
     
     def update_translation(self, translations: List[str]) -> bool:
         if len(translations) != len(self.groups):
@@ -213,21 +259,30 @@ class LrcParser:
         return [group.text for group in self.groups]
     
     def is_already_translated(self, threshold: int = 5) -> bool:
-        if len(self.groups) < 1:
-            return False
+        temp_lines = []
+        for times, text in self._raw_lines:
+            for time in times:
+                temp_lines.append(LrcLine(time, text))
         
-        translated_count = 0
-        for group in self.groups:
-            if group.translation:
-                translated_count += 1
-                if translated_count >= threshold:
+        temp_lines.sort(key=lambda x: x.time)
+        
+        same_time_count = 0
+        i = 0
+        while i < len(temp_lines) - 1:
+            if abs(temp_lines[i].time - temp_lines[i + 1].time) < 0.001:
+                same_time_count += 1
+                if same_time_count >= threshold:
                     return True
+                i += 2
+            else:
+                i += 1
         
         return False
     
     def restore_original(self) -> List[LrcLine]:
+        restored_groups = self._get_restored_groups()
         original_lines = []
-        for group in self.groups:
+        for group in restored_groups:
             for time in group.times:
                 original_lines.append(LrcLine(time, group.text))
         return original_lines
