@@ -40,10 +40,10 @@ class OpenAITranslator(Translator):
         prompt = f"""请将以下歌词翻译成{self.target_language}。
 
 要求：
-1. 每行歌词翻译成一行，保持原有行数（共{line_count}行）
+1. 每行歌词翻译成一行，保持原有行数（共{line_count}行），且绝对不可有空行
 2. 只返回翻译结果，每行用换行符分隔
 3. 不要添加任何解释、编号或额外内容
-4. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
+4. 如果某行只是歌曲的标题、作者、作曲家等元信息，不要忽略它，正常翻译
 5. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符，也不能添加额外的空行，一个不多一个不少
 6. 若某行难以翻译，不要跳过它或输出空行，直接返回该行的原文即可
 
@@ -115,10 +115,10 @@ class ChatGPTTranslator(Translator):
         prompt = f"""Translate the following lyrics to {self.target_language}.
 
 Requirements:
-1. Translate each line to one line, keep the same number of lines ({line_count} lines total)
+1. Translate each line to one line, keep the same number of lines ({line_count} lines total), and do not have any empty lines
 2. Only return the translation, separated by newlines
 3. Do not add any explanation, numbering or extra content
-4. If a line is just the song title or other metadata, do not ignore it, translate it as well
+4. If a line is just the song title, author, composer, or other metadata, do not ignore it, translate it as well
 5. The translated text must have the same format as the original lyrics, with no extra newlines, and one line for each original line
 6. If a line is difficult to translate, do not skip it or output an empty line, just return the original line
 
@@ -190,10 +190,10 @@ class DeepSeekTranslator(Translator):
         prompt = f"""请将以下歌词翻译成{self.target_language}。
 
 要求：
-1. 每行歌词翻译成一行，保持原有行数（共{line_count}行）
+1. 每行歌词翻译成一行，保持原有行数（共{line_count}行），且绝对不可有空行
 2. 只返回翻译结果，每行用换行符分隔
 3. 不要添加任何解释、编号或额外内容
-4. 如果某行只是歌曲的标题等元信息，不要忽略它，正常翻译
+4. 如果某行只是歌曲的标题、作者、作曲家等元信息，不要忽略它，正常翻译
 5. 翻译后文本的格式严格与原始歌词保持一致，绝对不可添加额外的回车符，也不能添加额外的空行，一个不多一个不少
 6. 若某行难以翻译，不要跳过它或输出空行，直接返回该行的原文即可
 
