@@ -56,7 +56,7 @@ TARGET_LANGUAGE=zh
 ### 命令行参数
 
 ```bash
-python main.py <lrc文件或目录路径> [翻译器类型]
+python main.py <lrc文件或目录路径>... [翻译器类型]
 ```
 
 ### 翻译器类型
@@ -70,15 +70,23 @@ python main.py <lrc文件或目录路径> [翻译器类型]
 ### 使用示例
 
 ```bash
-# 翻译单个LRC文件（使用默认OpenAI）
+# 翻译单个LRC文件（使用.env文件中指定的默认翻译器）
 python main.py ./song.lrc
+
+# 翻译多个LRC文件
+python main.py ./song1.lrc ./song2.lrc ./song3.lrc
 
 # 翻译整个目录（使用DeepSeek）
 python main.py ./lyrics deepseek
 
-# 使用ChatGPT翻译
-python main.py ./song.lrc chatgpt
+# 翻译多个文件和目录混合（使用ChatGPT）
+python main.py ./song.lrc ./album1 ./album2 chatgpt
+
 ```
+
+### 拖放使用
+
+打包成 exe 后，可以直接将**一个或多个** LRC 文件或目录拖放到 `LrcTranslator.exe` 上进行批量翻译。
 
 翻译后的文件会保存在原文件所在目录的 `translated/` 目录下，文件名保持不变。
 
