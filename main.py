@@ -88,10 +88,10 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
         print("更新翻译失败")
         return TranslateResult.Error
 
-def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
+def translate_lrc_directory(directory: str, translator_type: str = None) -> tuple:
     if not os.path.isdir(directory):
         print(f"错误：目录不存在或不是目录: {directory}")
-        return 0
+        return (0, 0, 0)
     
     translator = get_translator(translator_type)
     
@@ -99,7 +99,7 @@ def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
     
     if not lrc_files:
         print(f"目录中没有找到LRC文件: {directory}")
-        return 0
+        return (0, 0, 0)
     
     print(f"在目录 {directory} 中找到 {len(lrc_files)} 个LRC文件")
     
@@ -117,7 +117,7 @@ def translate_lrc_directory(directory: str, translator_type: str = None) -> int:
     
     print(f"\n翻译完成！成功: {success_count}/{len(lrc_files)}, 跳过: {skipped_count}, 已还原: {reset_count}")
     
-    return success_count
+    return (success_count, skipped_count, reset_count)
 
 def pause_and_exit(code: int = 0):
     print("\n按任意键退出...")
@@ -133,8 +133,8 @@ def main():
     
     if len(sys.argv) < 2:
         print("用法:")
-        print("  将LRC文件或目录拖放到此程序上")
-        print("  或通过命令行运行: LrcTranslator.exe <lrc文件或目录路径> [翻译器类型]")
+        print("  将LRC文件或目录拖放到此程序上（支持多个）")
+        print("  或通过命令行运行: LrcTranslator.exe <lrc文件或目录路径>... [翻译器类型]")
         print("")
         print("翻译器类型:")
         print("  openai - 使用OpenAI API")
@@ -145,22 +145,53 @@ def main():
         print("注意: 请确保.env文件与程序在同一目录下，并配置好API密钥")
         pause_and_exit(1)
     
-    path = sys.argv[1]
-    translator_type = sys.argv[2] if len(sys.argv) > 2 else None
-    
-    if not os.path.exists(path):
-        print(f"错误：路径不存在: {path}")
-        pause_and_exit(1)
-    
-    if os.path.isfile(path):
-        if not path.lower().endswith('.lrc'):
-            print("错误：文件必须是LRC格式")
-            pause_and_exit(1)
-        
-        translator = get_translator(translator_type)
-        translate_lrc_file(path, translator)
+    # 最后一个参数如果是翻译器类型，则提取出来
+    translator_types = ['openai', 'chatgpt', 'deepseek']
+    last_arg = sys.argv[-1].lower()
+    if last_arg in translator_types:
+        translator_type = last_arg
+        paths = sys.argv[1:-1]
     else:
-        translate_lrc_directory(path, translator_type)
+        translator_type = None
+        paths = sys.argv[1:]
+    
+    translator = get_translator(translator_type)
+    
+    total_files = 0
+    total_success = 0
+    total_skipped = 0
+    total_reset = 0
+    
+    for path in paths:
+        if not os.path.exists(path):
+            print(f"警告：路径不存在，跳过: {path}")
+            continue
+        
+        if os.path.isfile(path):
+            if not path.lower().endswith('.lrc'):
+                print(f"警告：文件不是LRC格式，跳过: {path}")
+                continue
+            
+            total_files += 1
+            result = translate_lrc_file(path, translator)
+            if result == TranslateResult.Success:
+                total_success += 1
+            elif result == TranslateResult.Skipped:
+                total_skipped += 1
+            elif result == TranslateResult.Reset:
+                total_reset += 1
+        else:
+            # 统计目录中的文件数
+            lrc_files = list(Path(path).rglob('*.lrc'))
+            total_files += len(lrc_files)
+            
+            success, skipped, reset = translate_lrc_directory(path, translator_type)
+            total_success += success
+            total_skipped += skipped
+            total_reset += reset
+    
+    if total_files > 1:
+        print(f"\n全部翻译完成！总计: 成功 {total_success}/{total_files}, 跳过: {total_skipped}, 已还原: {total_reset}")
     
     pause_and_exit(0)
 
