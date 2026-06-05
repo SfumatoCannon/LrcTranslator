@@ -70,6 +70,8 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
     print(f"开始翻译: {file_path}")
     
     translations = translator.translate_lyrics(lyrics_lines)
+    if all(s == '' for s in translations):
+        return TranslateResult.Error
     
     if parser.update_translation(translations):
         path = Path(file_path)

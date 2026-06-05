@@ -16,8 +16,23 @@ load_dotenv(get_base_path() / ".env")
 class Translator:
     def __init__(self):
         self.target_language = os.getenv('TARGET_LANGUAGE', 'zh')
+        self.max_retry_count = int(os.getenv('MAX_RETRY_COUNT', '0'))
     
     def translate_lyrics(self, lyrics: List[str]) -> List[str]:
+        last_result = None
+        for attempt in range(self.max_retry_count + 1):
+            if attempt > 0:
+                print(f"第 {attempt} 次重试翻译...")
+            last_result = self._do_translate(lyrics)
+            # 如果翻译成功（结果中没有空字符串），直接返回
+            if all(line != '' for line in last_result):
+                return last_result
+            # 如果还有重试机会，继续
+            if attempt < self.max_retry_count:
+                print(f"翻译失败，准备重试...")
+        return last_result
+    
+    def _do_translate(self, lyrics: List[str]) -> List[str]:
         pass
 
 class OpenAITranslator(Translator):
@@ -27,7 +42,7 @@ class OpenAITranslator(Translator):
         self.api_base = os.getenv('OPENAI_API_BASE', 'https://api.openai.com/v1')
         self.model = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
 
-    def translate_lyrics(self, lyrics: List[str]) -> List[str]:
+    def _do_translate(self, lyrics: List[str]) -> List[str]:
         if not self.api_key:
             print("错误：未配置OPENAI_API_KEY")
             return [''] * len(lyrics)
@@ -102,7 +117,7 @@ class ChatGPTTranslator(Translator):
         self.api_base = os.getenv('CHATGPT_API_BASE', 'https://api.chatgpt.com/v1')
         self.model = os.getenv('CHATGPT_MODEL', 'gpt-3.5-turbo')
 
-    def translate_lyrics(self, lyrics: List[str]) -> List[str]:
+    def _do_translate(self, lyrics: List[str]) -> List[str]:
         if not self.api_key:
             print("错误：未配置CHATGPT_API_KEY")
             return [''] * len(lyrics)
@@ -177,7 +192,7 @@ class DeepSeekTranslator(Translator):
         self.api_base = os.getenv('DEEPSEEK_API_BASE', 'https://api.deepseek.com/v1')
         self.model = os.getenv('DEEPSEEK_MODEL', 'deepseek-chat')
 
-    def translate_lyrics(self, lyrics: List[str]) -> List[str]:
+    def _do_translate(self, lyrics: List[str]) -> List[str]:
         if not self.api_key:
             print("错误：未配置DEEPSEEK_API_KEY")
             return [''] * len(lyrics)
