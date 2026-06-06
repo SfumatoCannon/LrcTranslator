@@ -17,18 +17,21 @@ class GlobalChoice(Enum):
     NoAll = 2
 
 global_choice = GlobalChoice.Ask
+failed_files = []
 
 def translate_lrc_file(file_path: str, translator) -> TranslateResult:
-    global global_choice
+    global global_choice, failed_files
     
     parser = LrcParser()
     if not parser.parse_file(file_path):
         print(f"无法解析文件: {file_path}")
+        failed_files.append(file_path)
         return TranslateResult.Error
     
     lyrics_lines = parser.get_lyrics_lines()
     if not lyrics_lines:
         print(f"文件中没有歌词内容: {file_path}")
+        failed_files.append(file_path)
         return TranslateResult.Error
     
     if parser.is_already_translated():
@@ -71,6 +74,7 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
     
     translations = translator.translate_lyrics(lyrics_lines)
     if all(s == '' for s in translations):
+        failed_files.append(file_path)
         return TranslateResult.Error
     
     if parser.update_translation(translations):
@@ -85,9 +89,11 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
             return TranslateResult.Success
         else:
             print(f"保存文件失败: {output_path}")
+            failed_files.append(file_path)
             return TranslateResult.Error
     else:
         print("更新翻译失败")
+        failed_files.append(file_path)
         return TranslateResult.Error
 
 def translate_lrc_directory(directory: str, translator_type: str = None) -> tuple:
@@ -194,6 +200,11 @@ def main():
     
     if total_files > 1:
         print(f"\n全部翻译完成！总计: 成功 {total_success}/{total_files}, 跳过: {total_skipped}, 已还原: {total_reset}")
+    
+    if failed_files:
+        print(f"\n以下文件翻译失败 ({len(failed_files)}个):")
+        for f in failed_files:
+            print(f"  - {f}")
     
     pause_and_exit(0)
 
