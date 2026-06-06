@@ -49,6 +49,9 @@ DEFAULT_TRANSLATOR=openai
 
 # 目标语言（默认中文）
 TARGET_LANGUAGE=zh
+
+# 单个文件翻译失败时的最大重试次数（默认0表示不重试）
+MAX_RETRY_COUNT=0
 ```
 
 ## 使用方法
