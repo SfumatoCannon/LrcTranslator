@@ -44,9 +44,8 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
         else:
             user_input = input("是否恢复成原翻译文本? (y:是 Y:全是, n:否 N:全否): ").strip()
             
-            if user_input not in ['y', 'Y', 'n', 'N']:
-                print("输入无效，跳过该歌曲")
-                return TranslateResult.Skipped
+            while user_input not in ['y', 'Y', 'n', 'N']:
+                user_input = input("是否恢复成原翻译文本? (y:是 Y:全是, n:否 N:全否): ").strip()
         
         if user_input in ['y', 'Y']:
             if global_choice == GlobalChoice.Ask and user_input == 'Y':
@@ -92,7 +91,7 @@ def translate_lrc_file(file_path: str, translator) -> TranslateResult:
             failed_files.append(file_path)
             return TranslateResult.Error
     else:
-        print("更新翻译失败")
+        print(f"\033[31m更新翻译失败\033[0m")
         failed_files.append(file_path)
         return TranslateResult.Error
 
@@ -123,7 +122,7 @@ def translate_lrc_directory(directory: str, translator_type: str = None) -> tupl
         elif result == TranslateResult.Reset:
             reset_count += 1
     
-    print(f"\n翻译完成！成功: {success_count}/{len(lrc_files)}, 跳过: {skipped_count}, 已还原: {reset_count}")
+    print(f"\n\033[32m翻译完成！成功: {success_count}/{len(lrc_files)}, 跳过: {skipped_count}, 已还原: {reset_count}\033[0m")
     
     return (success_count, skipped_count, reset_count)
 
@@ -199,12 +198,13 @@ def main():
             total_reset += reset
     
     if total_files > 1:
-        print(f"\n全部翻译完成！总计: 成功 {total_success}/{total_files}, 跳过: {total_skipped}, 已还原: {total_reset}")
+        print(f"\n\033[43m\033[30m[全部翻译完成]\033[0m\n总计: \033[32m成功 {total_success}/{total_files}\033[0m, 跳过: {total_skipped}, 已还原: {total_reset}")
     
     if failed_files:
-        print(f"\n以下文件翻译失败 ({len(failed_files)}个):")
+        print(f"\n\033[31m以下文件翻译失败 ({len(failed_files)}个):")
         for f in failed_files:
             print(f"  - {f}")
+        print("\033[0m", end="")
     
     pause_and_exit(0)
 
